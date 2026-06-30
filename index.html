@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DnB MeltFlow VR — Curved Screen Test</title>
+  <style>
+    :root{
+      --bg:#05060b;
+      --panel:rgba(9,12,21,.84);
+      --panel2:rgba(14,19,33,.94);
+      --text:#edf5ff;
+      --muted:#a8b8d0;
+      --line:rgba(255,255,255,.14);
+      --accent:#7fe8ff;
+      --accent2:#b18cff;
+      --danger:#ff8ca4;
+      --ok:#9effbd;
+      --shadow:rgba(0,0,0,.55);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;overflow:hidden;background:#000;color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+    body::before{
+      content:"";position:fixed;inset:0;z-index:-3;background:
+      radial-gradient(circle at 20% 10%,rgba(127,232,255,.16),transparent 32%),
+      radial-gradient(circle at 84% 20%,rgba(177,140,255,.16),transparent 34%),
+      linear-gradient(135deg,#05060b,#0a0d18 55%,#020308);
+    }
+    body.presentation-mode, body.presentation-mode *{cursor:none !important}
+
+    #stage{position:fixed;inset:0;background:#000;z-index:0}
+    #visualCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;background:#000;filter:brightness(.86) saturate(1.08) contrast(.96)}
+    #softener{
+      position:absolute;inset:0;pointer-events:none;background:
+      radial-gradient(circle at 50% 50%,transparent 42%,rgba(0,0,0,.18) 100%),
+      rgba(0,0,0,.03);
+      opacity:.8;
+    }
+    #vrMount{
+      position:fixed;inset:0;z-index:4;pointer-events:none;
+    }
+    #vrMount canvas{
+      width:100% !important;height:100% !important;display:block;
+    }
+    body.xr-active #visualCanvas,
+    body.xr-active #softener{
+      opacity:0;
+      pointer-events:none;
+    }
+    body.xr-active #vrMount{
+      pointer-events:auto;
+    }
+
+    .panel{
+      position:fixed;left:18px;top:18px;width:min(430px,calc(100vw - 36px));max-height:calc(100vh - 36px);overflow:auto;
+      border:1px solid var(--line);border-radius:24px;background:var(--panel);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+      box-shadow:0 26px 90px var(--shadow);padding:18px;z-index:10;transition:opacity .22s ease,transform .22s ease;
+    }
+    .panel.hidden{opacity:0;transform:translateY(8px);pointer-events:none}
+    h1{margin:0 0 7px;font-size:30px;line-height:.95;letter-spacing:-.05em}
+    .sub{margin:0 0 15px;color:var(--muted);font-size:13px;line-height:1.46}
+    .section{border-top:1px solid rgba(255,255,255,.09);padding-top:13px;margin-top:13px}
+    .section:first-of-type{border-top:0;margin-top:0;padding-top:0}
+    .label{display:block;margin:0 0 7px;color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+    .grid{display:grid;gap:9px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+    button,select,input{font:inherit;color:var(--text)}
+    button{
+      width:100%;border:1px solid var(--line);border-radius:14px;padding:10px 11px;background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.045));
+      cursor:pointer;transition:transform .12s ease,border-color .12s ease,background .12s ease,opacity .12s ease;box-shadow:0 10px 22px rgba(0,0,0,.18)
+    }
+    button:hover:not(:disabled){transform:translateY(-1px);border-color:rgba(127,232,255,.55)}
+    button:active:not(:disabled){transform:translateY(1px)}
+    button:disabled{opacity:.45;cursor:not-allowed}
+    button.primary{background:linear-gradient(180deg,rgba(127,232,255,.28),rgba(58,130,255,.13));border-color:rgba(127,232,255,.5)}
+    button.secondary{background:linear-gradient(180deg,rgba(177,140,255,.24),rgba(177,140,255,.08));border-color:rgba(177,140,255,.44)}
+    button.danger{background:linear-gradient(180deg,rgba(255,140,164,.22),rgba(255,140,164,.08));border-color:rgba(255,140,164,.44)}
+    select,input[type=file]{
+      width:100%;border:1px solid var(--line);border-radius:14px;background:#0b1020;color:#eef5ff;padding:10px 11px;outline:none;
+    }
+    select option{background:#0b1020;color:#eef5ff}
+    input[type=range]{width:100%;accent-color:var(--accent)}
+    .control{display:grid;gap:5px}
+    .controlHead{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px}
+    .value{color:var(--text);font-variant-numeric:tabular-nums}
+    .status{
+      margin-top:10px;border:1px solid rgba(255,255,255,.09);border-radius:16px;background:rgba(0,0,0,.24);padding:10px;color:var(--muted);
+      white-space:pre-wrap;font-size:12px;line-height:1.42;min-height:78px
+    }
+    .mini{
+      position:fixed;left:50%;top:14px;transform:translateX(-50%);display:flex;gap:8px;align-items:center;z-index:9;
+      border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(5,7,13,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+      padding:8px 12px;opacity:0;pointer-events:none;transition:opacity .42s ease;max-width:calc(100vw - 28px)
+    }
+    .mini.show{opacity:1}
+    .mini span{color:var(--muted);font-size:12px;white-space:nowrap}
+    .help{
+      position:fixed;right:18px;bottom:18px;z-index:8;max-width:min(455px,calc(100vw - 36px));border:1px solid rgba(255,255,255,.12);border-radius:18px;
+      background:rgba(5,7,13,.56);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:11px 13px;color:var(--muted);font-size:12px;line-height:1.45;
+      transition:opacity .18s ease
+    }
+    .help.hidden{opacity:0;pointer-events:none}
+    kbd{display:inline-block;min-width:1.4em;text-align:center;padding:1px 5px;border:1px solid rgba(255,255,255,.16);border-bottom-width:2px;border-radius:6px;background:rgba(255,255,255,.08);color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px}
+    audio{width:100%;height:34px;margin-top:8px;display:none}
+    #webxrNotice{
+      display:none;margin-top:8px;color:var(--muted);font-size:12px;line-height:1.4
+    }
+    body.no-webxr #webxrNotice{display:block}
+    @media(max-width:740px){
+      .panel{left:10px;top:10px;width:calc(100vw - 20px);max-height:calc(100vh - 20px);padding:14px}
+      .row,.row3{grid-template-columns:1fr}
+      .help{display:none}
+      .mini span{font-size:11px}
+    }
+  </style>
+
+  <script src="https://unpkg.com/lodash"></script>
+  <script src="https://unpkg.com/butterchurn-presets@3.0.0-beta.4/dist/base.min.js"></script>
+  <script src="https://unpkg.com/butterchurn-presets@3.0.0-beta.4/dist/extra.min.js"></script>
+</head>
+<body>
+  <main id="stage" aria-label="DnB MeltFlow visual stage">
+    <canvas id="visualCanvas"></canvas>
+    <div id="softener"></div>
+  </main>
+  <div id="vrMount" aria-hidden="true"></div>
+
+  <aside id="panel" class="panel">
+    <h1>DnB MeltFlow VR</h1>
+    <p class="sub">Butterchurn/MilkDrop radio visuals with a Stage 1 WebXR test: the live visual canvas becomes a giant curved screen in front of you.</p>
+
+    <section class="section">
+      <span class="label">Audio source</span>
+      <div class="grid">
+        <select id="sourceSelect">
+          <option value="bassdrive">Bassdrive — drum &amp; bass</option>
+          <option value="dronezone">SomaFM Drone Zone — ambient</option>
+          <option value="deepspaceone">SomaFM Deep Space One — deep space</option>
+          <option value="groovesalad">SomaFM Groove Salad — downtempo</option>
+          <option value="thetrip">SomaFM The Trip — psychedelic electronic</option>
+          <option value="local">Local audio file — best reaction</option>
+          <option value="silent">Silent visuals only</option>
+        </select>
+        <input id="fileInput" type="file" accept="audio/*" style="display:none" />
+        <div class="row">
+          <button id="playBtn" class="primary">Play</button>
+          <button id="stopBtn" class="danger">Stop</button>
+        </div>
+        <audio id="radioAudio" controls></audio>
+        <audio id="localAudio" controls></audio>
+      </div>
+    </section>
+
+    <section class="section">
+      <span class="label">Presets</span>
+      <div class="grid">
+        <select id="vibeSelect">
+          <option value="all">All presets</option>
+          <option value="space">Space / nebula</option>
+          <option value="tunnel">Tunnel / spiral</option>
+          <option value="liquid">Liquid / flow</option>
+          <option value="calm">Softer names</option>
+          <option value="psy">Psychedelic / dense</option>
+        </select>
+        <select id="presetSelect"></select>
+        <div class="row3">
+          <button id="randomPresetBtn" class="secondary">Random</button>
+          <button id="nextPresetBtn">Next</button>
+          <button id="autoBtn" class="primary">Auto morph</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <span class="label">Look and safety</span>
+      <div class="grid">
+        <div class="control">
+          <div class="controlHead"><span>Brightness limit</span><span class="value" id="brightVal">82</span></div>
+          <input id="brightSlider" type="range" min="40" max="115" value="82" />
+        </div>
+        <div class="control">
+          <div class="controlHead"><span>Saturation</span><span class="value" id="satVal">112</span></div>
+          <input id="satSlider" type="range" min="40" max="160" value="112" />
+        </div>
+        <div class="control">
+          <div class="controlHead"><span>Soft dim overlay</span><span class="value" id="dimVal">14</span></div>
+          <input id="dimSlider" type="range" min="0" max="55" value="14" />
+        </div>
+        <div class="control">
+          <div class="controlHead"><span>Auto interval</span><span class="value" id="intervalVal">32s</span></div>
+          <input id="intervalSlider" type="range" min="8" max="90" value="32" />
+        </div>
+        <div class="control">
+          <div class="controlHead"><span>Morph blend</span><span class="value" id="blendVal">5s</span></div>
+          <input id="blendSlider" type="range" min="1" max="12" value="5" />
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <span class="label">VR curved screen test</span>
+      <div class="grid">
+        <div class="row">
+          <button id="enterVrBtn" class="primary">Enter VR</button>
+          <button id="recenterBtn" class="secondary">Recenter screen</button>
+        </div>
+        <div class="control">
+          <div class="controlHead"><span>Screen distance</span><span class="value" id="distanceVal">4.2m</span></div>
+          <input id="distanceSlider" type="range" min="28" max="70" value="42" />
+        </div>
+        <div class="control">
+          <div class="controlHead"><span>Screen curve</span><span class="value" id="curveVal">62</span></div>
+          <input id="curveSlider" type="range" min="15" max="95" value="62" />
+        </div>
+        <div class="control">
+          <div class="controlHead"><span>Screen size</span><span class="value" id="screenSizeVal">100</span></div>
+          <input id="screenSizeSlider" type="range" min="70" max="135" value="100" />
+        </div>
+        <p id="webxrNotice">WebXR VR is only available in supported browsers/headsets over HTTPS, such as Meta Quest Browser on a GitHub Pages URL.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <span class="label">View</span>
+      <div class="row3">
+        <button id="cleanBtn" class="primary">Hide controls</button>
+        <button id="fullBtn" class="secondary">Fullscreen</button>
+        <button id="showAudioBtn">Show player</button>
+      </div>
+      <div id="status" class="status">Loading Butterchurn module...</div>
+    </section>
+  </aside>
+
+  <div id="mini" class="mini">
+    <span id="miniText"><kbd>Space</kbd> play/pause · <kbd>F</kbd> fullscreen · <kbd>R</kbd> random · <kbd>N</kbd> next · <kbd>A</kbd> auto morph · <kbd>C</kbd> show controls</span>
+  </div>
+
+  <div id="help" class="help">
+    <kbd>Space</kbd> play/pause · <kbd>F</kbd> fullscreen · <kbd>R</kbd> random · <kbd>N</kbd> next · <kbd>A</kbd> auto morph · <kbd>C</kbd>/<kbd>H</kbd> hide controls · in VR: trigger random, thumbstick left/right presets, B/Y exits VR.
+  </div>
+
+  <script type="module">
+    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+    const els = {
+      canvas: document.getElementById('visualCanvas'),
+      softener: document.getElementById('softener'),
+      vrMount: document.getElementById('vrMount'),
+      panel: document.getElementById('panel'),
+      mini: document.getElementById('mini'),
+      miniText: document.getElementById('miniText'),
+      help: document.getElementById('help'),
+      status: document.getElementById('status'),
+      sourceSelect: document.getElementById('sourceSelect'),
+      fileInput: document.getElementById('fileInput'),
+      playBtn: document.getElementById('playBtn'),
+      stopBtn: document.getElementById('stopBtn'),
+      radioAudio: document.getElementById('radioAudio'),
+      localAudio: document.getElementById('localAudio'),
+      vibeSelect: document.getElementById('vibeSelect'),
+      presetSelect: document.getElementById('presetSelect'),
+      randomPresetBtn: document.getElementById('randomPresetBtn'),
+      nextPresetBtn: document.getElementById('nextPresetBtn'),
+      autoBtn: document.getElementById('autoBtn'),
+      cleanBtn: document.getElementById('cleanBtn'),
+      fullBtn: document.getElementById('fullBtn'),
+      showAudioBtn: document.getElementById('showAudioBtn'),
+      enterVrBtn: document.getElementById('enterVrBtn'),
+      recenterBtn: document.getElementById('recenterBtn'),
+      brightSlider: document.getElementById('brightSlider'),
+      satSlider: document.getElementById('satSlider'),
+      dimSlider: document.getElementById('dimSlider'),
+      intervalSlider: document.getElementById('intervalSlider'),
+      blendSlider: document.getElementById('blendSlider'),
+      distanceSlider: document.getElementById('distanceSlider'),
+      curveSlider: document.getElementById('curveSlider'),
+      screenSizeSlider: document.getElementById('screenSizeSlider'),
+      brightVal: document.getElementById('brightVal'),
+      satVal: document.getElementById('satVal'),
+      dimVal: document.getElementById('dimVal'),
+      intervalVal: document.getElementById('intervalVal'),
+      blendVal: document.getElementById('blendVal'),
+      distanceVal: document.getElementById('distanceVal'),
+      curveVal: document.getElementById('curveVal'),
+      screenSizeVal: document.getElementById('screenSizeVal')
+    };
+
+    const STREAMS = {
+      bassdrive: {
+        label: 'Bassdrive',
+        urls: ['https://bassdrive.radioca.st/stream', 'https://bassdrive.radioca.st/;stream.mp3']
+      },
+      dronezone: {
+        label: 'SomaFM Drone Zone',
+        urls: ['https://ice5.somafm.com/dronezone-128-mp3', 'https://ice3.somafm.com/dronezone-128-mp3', 'https://ice.somafm.com/dronezone']
+      },
+      deepspaceone: {
+        label: 'SomaFM Deep Space One',
+        urls: ['https://ice5.somafm.com/deepspaceone-128-mp3', 'https://ice3.somafm.com/deepspaceone-128-mp3', 'https://ice.somafm.com/deepspaceone']
+      },
+      groovesalad: {
+        label: 'SomaFM Groove Salad',
+        urls: ['https://ice.somafm.com/groovesalad', 'https://ice2.somafm.com/groovesalad-128-mp3', 'https://ice5.somafm.com/groovesalad-128-mp3']
+      },
+      thetrip: {
+        label: 'SomaFM The Trip',
+        urls: ['https://ice.somafm.com/thetrip', 'https://ice4.somafm.com/thetrip-128-mp3']
+      }
+    };
+
+    const START_PRESET_HINT = 'shadow harlequin lovely shiny squares liquid starburst rm mixed unchained royal nova';
+    const START_PRESET_TOKENS = START_PRESET_HINT.split(/\s+/).filter(Boolean);
+
+    const state = {
+      butterchurn: null,
+      visualizer: null,
+      presets: {},
+      allKeys: [],
+      filteredKeys: [],
+      presetIndex: 0,
+      currentPreset: '',
+      audioContext: null,
+      mediaSource: null,
+      gainNode: null,
+      renderOn: false,
+      clean: false,
+      auto: false,
+      autoTimer: null,
+      localUrl: null,
+      radioUrlIndex: 0,
+      source: 'bassdrive',
+      playing: false,
+      audioBarVisible: false,
+      overlayTimer: null,
+      revealBlockUntil: 0,
+      vrSupported: false,
+      xrSession: null,
+      xrReferenceSpace: null,
+      xrActive: false,
+      controllerCooldown: 0,
+      vr: null
+    };
+
+    function status(text) {
+      els.status.textContent = text;
+    }
+
+    function diagnostic() {
+      return [
+        `Butterchurn: ${Boolean(state.butterchurn)}`,
+        `Visualizer: ${Boolean(state.visualizer)}`,
+        `Presets: ${state.allKeys.length}`,
+        `WebGL2: ${Boolean(document.createElement('canvas').getContext('webgl2'))}`,
+        `WebXR VR: ${state.vrSupported ? 'available' : 'not available here'}`,
+        `Audio source: ${labelForSource(state.source)}`
+      ].join('\n');
+    }
+
+    function labelForSource(value) {
+      if (value === 'local') return 'Local audio';
+      if (value === 'silent') return 'Silent visuals';
+      return STREAMS[value]?.label || value;
+    }
+
+    function resizeCanvas() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const w = Math.max(640, Math.floor(innerWidth * dpr));
+      const h = Math.max(360, Math.floor(innerHeight * dpr));
+      if (els.canvas.width !== w || els.canvas.height !== h) {
+        els.canvas.width = w;
+        els.canvas.height = h;
+        if (state.visualizer) state.visualizer.setRendererSize(w, h);
+      }
+    }
+
+    async function ensureButterchurn() {
+      resizeCanvas();
+      if (!state.butterchurn) {
+        try {
+          const mod = await import('https://unpkg.com/butterchurn@3.0.0-beta.5/dist/butterchurn.js');
+          state.butterchurn = mod.default || mod;
+        } catch (err) {
+          console.error(err);
+          status('Butterchurn module failed to load.\n\n' + String(err));
+          return false;
+        }
+      }
+
+      if (!state.audioContext) {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        state.audioContext = new Ctx();
+      }
+      if (state.audioContext.state === 'suspended') await state.audioContext.resume();
+
+      if (!state.allKeys.length) {
+        state.presets = {};
+        if (window.base && window.base.default) Object.assign(state.presets, window.base.default);
+        if (window.extra && window.extra.default) Object.assign(state.presets, window.extra.default);
+        state.allKeys = Object.keys(state.presets).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+        applyVibeFilter(false);
+      }
+
+      if (!state.allKeys.length) {
+        status('Preset packs did not load.\n\n' + diagnostic());
+        return false;
+      }
+
+      if (!state.visualizer) {
+        try {
+          state.visualizer = state.butterchurn.createVisualizer(state.audioContext, els.canvas, {
+            width: els.canvas.width,
+            height: els.canvas.height,
+            pixelRatio: 1,
+            textureRatio: 1
+          });
+          if (!loadPreferredPreset(0)) loadRandomPreset(0);
+          startRenderLoop();
+        } catch (err) {
+          console.error(err);
+          status('Butterchurn visualizer could not initialise.\n\n' + String(err) + '\n\n' + diagnostic());
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function applyVibeFilter(keepCurrent = true) {
+      const vibe = els.vibeSelect.value;
+      const tests = {
+        all: [/./i],
+        space: [/space/i,/star/i,/nebula/i,/cosm/i,/galax/i,/heaven/i,/void/i,/universe/i,/moon/i],
+        tunnel: [/tunnel/i,/spiral/i,/vortex/i,/warp/i,/worm/i,/tube/i,/hole/i,/depth/i],
+        liquid: [/liquid/i,/water/i,/flow/i,/wave/i,/plasma/i,/smoke/i,/river/i,/ocean/i],
+        calm: [/dream/i,/soft/i,/slow/i,/calm/i,/quiet/i,/ambient/i,/night/i,/cloud/i,/angel/i],
+        psy: [/psy/i,/trip/i,/acid/i,/fractal/i,/kaleid/i,/escher/i,/mad/i,/chaos/i,/morph/i]
+      }[vibe] || [/./i];
+
+      state.filteredKeys = state.allKeys.filter(name => tests.some(rx => rx.test(name)));
+      if (!state.filteredKeys.length) state.filteredKeys = state.allKeys.slice();
+
+      els.presetSelect.innerHTML = '';
+      state.filteredKeys.forEach((name, i) => {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = name.length > 80 ? name.slice(0, 80) + '…' : name;
+        els.presetSelect.appendChild(opt);
+      });
+
+      if (keepCurrent && state.currentPreset) {
+        const idx = state.filteredKeys.indexOf(state.currentPreset);
+        if (idx >= 0) {
+          state.presetIndex = idx;
+          els.presetSelect.value = String(idx);
+        } else {
+          state.presetIndex = 0;
+          els.presetSelect.value = '0';
+        }
+      }
+    }
+
+    function loadPresetByIndex(index, blend = getBlend()) {
+      if (!state.visualizer || !state.filteredKeys.length) return;
+      state.presetIndex = ((index % state.filteredKeys.length) + state.filteredKeys.length) % state.filteredKeys.length;
+      const name = state.filteredKeys[state.presetIndex];
+      state.currentPreset = name;
+      els.presetSelect.value = String(state.presetIndex);
+      state.visualizer.loadPreset(state.presets[name], blend);
+      status(`Preset: ${name}\n${diagnostic()}`);
+    }
+
+    function loadPreferredPreset(blend = 0) {
+      if (!state.visualizer || !state.allKeys.length) return false;
+
+      const candidates = state.allKeys.map((name, index) => {
+        const lower = name.toLowerCase();
+        let score = 0;
+        for (const token of START_PRESET_TOKENS) {
+          if (lower.includes(token)) score += token.length >= 6 ? 3 : 2;
+        }
+        if (lower.includes('shadow harlequin')) score += 12;
+        if (lower.includes('lovely shiny squares')) score += 12;
+        if (lower.includes('liquid starburst')) score += 10;
+        if (lower.includes('unchained')) score += 8;
+        if (lower.includes('royal nova')) score += 8;
+        return { name, index, score };
+      }).sort((a, b) => b.score - a.score);
+
+      const best = candidates[0];
+      if (!best || best.score < 10) return false;
+
+      els.vibeSelect.value = 'all';
+      applyVibeFilter(false);
+      const filteredIndex = state.filteredKeys.indexOf(best.name);
+      if (filteredIndex >= 0) loadPresetByIndex(filteredIndex, blend);
+      else loadPresetByIndex(best.index, blend);
+      status(`Starting preset:\n${best.name}\n\n${diagnostic()}`);
+      return true;
+    }
+
+    function loadRandomPreset(blend = getBlend()) {
+      if (!state.filteredKeys.length) return;
+      loadPresetByIndex(Math.floor(Math.random() * state.filteredKeys.length), blend);
+    }
+
+    function getBlend() {
+      return Number(els.blendSlider.value) || 5;
+    }
+
+    function startRenderLoop() {
+      if (state.renderOn) return;
+      state.renderOn = true;
+      const frame = () => {
+        if (!state.renderOn) return;
+        try {
+          resizeCanvas();
+          if (state.visualizer) state.visualizer.render();
+          if (state.vr?.texture) state.vr.texture.needsUpdate = true;
+        } catch (err) {
+          console.error(err);
+          status('Render error:\n' + String(err));
+          state.renderOn = false;
+          return;
+        }
+        requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    }
+
+    function applyLook() {
+      const bright = Number(els.brightSlider.value);
+      const sat = Number(els.satSlider.value);
+      const dim = Number(els.dimSlider.value);
+      els.canvas.style.filter = `brightness(${bright/100}) saturate(${sat/100}) contrast(.96)`;
+      els.softener.style.background = `radial-gradient(circle at 50% 50%, transparent 42%, rgba(0,0,0,${0.14 + dim/180}) 100%), rgba(0,0,0,${dim/220})`;
+      els.brightVal.textContent = String(bright);
+      els.satVal.textContent = String(sat);
+      els.dimVal.textContent = String(dim);
+      els.intervalVal.textContent = `${els.intervalSlider.value}s`;
+      els.blendVal.textContent = `${els.blendSlider.value}s`;
+      applyVrScreenSettings();
+    }
+
+    function applyVrScreenSettings() {
+      els.distanceVal.textContent = `${(Number(els.distanceSlider.value)/10).toFixed(1)}m`;
+      els.curveVal.textContent = String(els.curveSlider.value);
+      els.screenSizeVal.textContent = String(els.screenSizeSlider.value);
+      if (state.vr?.screen) {
+        rebuildCurvedScreen();
+      }
+    }
+
+    function showMiniOverlayBriefly(duration = 5000) {
+      clearTimeout(state.overlayTimer);
+      els.miniText.innerHTML = '<kbd>Space</kbd> play/pause · <kbd>F</kbd> fullscreen · <kbd>R</kbd> random · <kbd>N</kbd> next · <kbd>A</kbd> auto morph · <kbd>C</kbd> show controls';
+      els.mini.classList.add('show');
+      state.overlayTimer = setTimeout(() => els.mini.classList.remove('show'), duration);
+    }
+
+    function setClean(clean) {
+      state.clean = clean;
+      document.body.classList.toggle('presentation-mode', clean);
+      els.panel.classList.toggle('hidden', clean);
+      els.help.classList.toggle('hidden', clean);
+      els.cleanBtn.textContent = clean ? 'Show controls' : 'Hide controls';
+      if (clean) {
+        state.revealBlockUntil = performance.now() + 900;
+        showMiniOverlayBriefly(5000);
+        if (!document.fullscreenElement && !state.xrActive) {
+          document.documentElement.requestFullscreen?.().catch(() => {});
+        }
+      } else {
+        clearTimeout(state.overlayTimer);
+        els.mini.classList.remove('show');
+      }
+    }
+
+    function showControlsTemporarily() {
+      if (!state.clean) return;
+      if (performance.now() < state.revealBlockUntil) return;
+      if (state.xrActive) return;
+      setClean(false);
+    }
+
+    async function setAudioSource() {
+      state.source = els.sourceSelect.value;
+      state.radioUrlIndex = 0;
+      els.fileInput.style.display = state.source === 'local' ? 'block' : 'none';
+      els.radioAudio.style.display = state.audioBarVisible && !['local','silent'].includes(state.source) ? 'block' : 'none';
+      els.localAudio.style.display = state.audioBarVisible && state.source === 'local' ? 'block' : 'none';
+      els.radioAudio.pause();
+      els.localAudio.pause();
+      state.playing = false;
+      els.playBtn.textContent = 'Play';
+
+      if (state.source === 'local') {
+        status('Local file mode selected. Choose an audio file, then press Play.\nLocal files give the best real audio reaction.');
+      } else if (state.source === 'silent') {
+        status('Silent visuals selected. No audio will play.\n' + diagnostic());
+      } else {
+        const station = STREAMS[state.source];
+        els.radioAudio.removeAttribute('crossorigin');
+        els.radioAudio.src = station.urls[0];
+        els.radioAudio.load();
+        status(`${station.label} selected. Press Play.\nRadio plays directly; visual motion comes from Butterchurn presets.`);
+      }
+    }
+
+    async function connectLocalAudioIfNeeded() {
+      if (!els.localAudio.src) return false;
+      await ensureButterchurn();
+      if (!state.mediaSource) {
+        state.mediaSource = state.audioContext.createMediaElementSource(els.localAudio);
+        state.gainNode = state.audioContext.createGain();
+        state.gainNode.gain.value = 1;
+        state.mediaSource.connect(state.gainNode);
+        state.gainNode.connect(state.audioContext.destination);
+        state.visualizer.connectAudio(state.gainNode);
+      }
+      return true;
+    }
+
+    async function playSelected() {
+      const ok = await ensureButterchurn();
+      if (!ok) return;
+
+      if (state.source === 'silent') {
+        startRenderLoop();
+        status('Silent visual mode running.\n' + diagnostic());
+        return;
+      }
+
+      if (state.source === 'local') {
+        if (!els.localAudio.src) {
+          status('Choose a local audio file first.\n' + diagnostic());
+          return;
+        }
+        try {
+          await connectLocalAudioIfNeeded();
+          await els.localAudio.play();
+          state.playing = true;
+          els.playBtn.textContent = 'Pause';
+          status('Local audio connected to Butterchurn.\nThis is the strongest audio-reactive mode.\n' + diagnostic());
+        } catch (err) {
+          console.error(err);
+          status('Local audio could not play/connect.\n\n' + String(err));
+        }
+        return;
+      }
+
+      try {
+        els.localAudio.pause();
+        const station = STREAMS[state.source];
+        if (!els.radioAudio.src) {
+          els.radioAudio.src = station.urls[0];
+          els.radioAudio.load();
+        }
+        await els.radioAudio.play();
+        state.playing = true;
+        els.playBtn.textContent = 'Pause';
+        status(`Playing ${station.label}.\nRadio is playing directly; presets animate even when stream analysis is blocked.\n${diagnostic()}`);
+      } catch (err) {
+        console.error(err);
+        status('Radio playback failed. Trying fallback stream if available...\n' + String(err));
+        tryNextRadioUrl();
+      }
+    }
+
+    async function tryNextRadioUrl() {
+      const station = STREAMS[state.source];
+      if (!station) return;
+      state.radioUrlIndex++;
+      if (state.radioUrlIndex >= station.urls.length) {
+        status(`All stream URLs failed for ${station.label}. Try another station.\n` + diagnostic());
+        return;
+      }
+      try {
+        els.radioAudio.src = station.urls[state.radioUrlIndex];
+        els.radioAudio.load();
+        await els.radioAudio.play();
+        state.playing = true;
+        els.playBtn.textContent = 'Pause';
+        status(`Switched to fallback stream for ${station.label}.\n${diagnostic()}`);
+      } catch (err) {
+        console.warn(err);
+        tryNextRadioUrl();
+      }
+    }
+
+    function pauseAll() {
+      els.radioAudio.pause();
+      els.localAudio.pause();
+      state.playing = false;
+      els.playBtn.textContent = 'Play';
+      status('Paused audio. Visuals continue.\n' + diagnostic());
+    }
+
+    function stopAll() {
+      els.radioAudio.pause();
+      els.localAudio.pause();
+      try { els.radioAudio.currentTime = 0; } catch(_) {}
+      try { els.localAudio.currentTime = 0; } catch(_) {}
+      state.playing = false;
+      els.playBtn.textContent = 'Play';
+      status('Stopped.\n' + diagnostic());
+    }
+
+    function toggleAuto() {
+      state.auto = !state.auto;
+      clearInterval(state.autoTimer);
+      state.autoTimer = null;
+      if (state.auto) {
+        loadRandomPreset(getBlend());
+        state.autoTimer = setInterval(() => loadRandomPreset(getBlend()), Number(els.intervalSlider.value) * 1000);
+      }
+      els.autoBtn.textContent = state.auto ? 'Stop auto' : 'Auto morph';
+      els.autoBtn.classList.toggle('danger', state.auto);
+      els.autoBtn.classList.toggle('primary', !state.auto);
+      status((state.auto ? 'Auto morph is on.' : 'Auto morph is off.') + '\n' + diagnostic());
+    }
+
+    function restartAutoIfNeeded() {
+      if (!state.auto) return;
+      clearInterval(state.autoTimer);
+      state.autoTimer = setInterval(() => loadRandomPreset(getBlend()), Number(els.intervalSlider.value) * 1000);
+    }
+
+    async function initVrWorld() {
+      if (state.vr) return;
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x000008);
+
+      const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 120);
+      camera.position.set(0, 1.62, 0);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      renderer.setSize(innerWidth, innerHeight);
+      renderer.xr.enabled = true;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      els.vrMount.appendChild(renderer.domElement);
+
+      const texture = new THREE.CanvasTexture(els.canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+
+      const rig = new THREE.Group();
+      scene.add(rig);
+
+      const ambience = new THREE.Group();
+      scene.add(ambience);
+
+      const floorGeo = new THREE.RingGeometry(0.35, 7.5, 128);
+      const floorMat = new THREE.MeshBasicMaterial({ color: 0x0b1326, transparent: true, opacity: 0.26, side: THREE.DoubleSide });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = 0.02;
+      ambience.add(floor);
+
+      const starGeo = new THREE.BufferGeometry();
+      const starCount = 900;
+      const pos = new Float32Array(starCount * 3);
+      for (let i = 0; i < starCount; i++) {
+        const r = 8 + Math.random() * 18;
+        const a = Math.random() * Math.PI * 2;
+        const y = -1.5 + Math.random() * 7;
+        pos[i*3] = Math.cos(a) * r;
+        pos[i*3+1] = y;
+        pos[i*3+2] = Math.sin(a) * r - 5;
+      }
+      starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const starMat = new THREE.PointsMaterial({ color: 0x88ccff, size: 0.018, transparent: true, opacity: 0.52, depthWrite: false });
+      const stars = new THREE.Points(starGeo, starMat);
+      ambience.add(stars);
+
+      state.vr = { scene, camera, renderer, texture, rig, ambience, floor, stars, screen: null, material: null };
+      rebuildCurvedScreen();
+
+      renderer.xr.addEventListener('sessionstart', () => {
+        state.xrActive = true;
+        document.body.classList.add('xr-active');
+        setClean(true);
+        status('VR session started. Trigger = random, thumbstick left/right = presets, B/Y = exit VR.\n' + diagnostic());
+      });
+      renderer.xr.addEventListener('sessionend', () => {
+        state.xrActive = false;
+        document.body.classList.remove('xr-active');
+        document.body.classList.remove('presentation-mode');
+        setClean(false);
+        status('Exited VR.\n' + diagnostic());
+      });
+
+      renderer.setAnimationLoop((time) => {
+        const t = time * 0.001;
+        if (state.vr.texture) state.vr.texture.needsUpdate = true;
+        if (state.vr.ambience) state.vr.ambience.rotation.y = Math.sin(t * 0.08) * 0.05;
+        if (state.vr.stars) state.vr.stars.rotation.y = t * 0.01;
+        pollVrControllers();
+        renderer.render(scene, camera);
+      });
+    }
+
+    function rebuildCurvedScreen() {
+      if (!state.vr) return;
+      const { scene, texture } = state.vr;
+      if (state.vr.screen) {
+        state.vr.screen.geometry.dispose();
+        state.vr.screen.material.dispose();
+        scene.remove(state.vr.screen);
+      }
+
+      const size = Number(els.screenSizeSlider.value) / 100;
+      const distance = Number(els.distanceSlider.value) / 10;
+      const curveAmount = Number(els.curveSlider.value) / 100;
+
+      const radius = 4.8 / Math.max(0.18, curveAmount);
+      const arc = THREE.MathUtils.degToRad(86 * curveAmount + 18);
+      const height = 3.15 * size;
+      const radialSegments = 96;
+      const heightSegments = 18;
+      const geo = new THREE.CylinderGeometry(radius, radius, height, radialSegments, heightSegments, true, -arc / 2 - Math.PI / 2, arc);
+      geo.scale(size, 1, size);
+      geo.rotateY(Math.PI);
+
+      const mat = new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.BackSide,
+        transparent: false,
+        toneMapped: false
+      });
+
+      const screen = new THREE.Mesh(geo, mat);
+      screen.position.set(0, 1.62, -distance);
+      screen.rotation.y = 0;
+      state.vr.screen = screen;
+      state.vr.material = mat;
+      scene.add(screen);
+    }
+
+    async function enterVr() {
+      const ok = await ensureButterchurn();
+      if (!ok) return;
+      await initVrWorld();
+
+      if (!navigator.xr) {
+        document.body.classList.add('no-webxr');
+        status('WebXR is not available in this browser. Upload to GitHub Pages and open it in Meta Quest Browser.\n' + diagnostic());
+        return;
+      }
+
+      const supported = await navigator.xr.isSessionSupported('immersive-vr').catch(() => false);
+      state.vrSupported = supported;
+      if (!supported) {
+        document.body.classList.add('no-webxr');
+        status('Immersive VR is not available here. This is normal on desktop Chrome without a headset.\nTry the GitHub Pages URL in Meta Quest Browser.\n' + diagnostic());
+        return;
+      }
+
+      try {
+        await playSelected().catch(() => {});
+        const session = await navigator.xr.requestSession('immersive-vr', {
+          optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking']
+        });
+        state.xrSession = session;
+        await state.vr.renderer.xr.setSession(session);
+      } catch (err) {
+        console.error(err);
+        status('Could not enter VR.\n\n' + String(err) + '\n\n' + diagnostic());
+      }
+    }
+
+    async function recenterVrScreen() {
+      if (!state.vr) await initVrWorld();
+      rebuildCurvedScreen();
+      status('VR curved screen recentered/reset.\n' + diagnostic());
+    }
+
+    function pollVrControllers() {
+      if (!state.xrActive) return;
+      const now = performance.now();
+      if (now < state.controllerCooldown) return;
+
+      const session = state.vr?.renderer?.xr?.getSession?.();
+      if (!session) return;
+      for (const source of session.inputSources) {
+        const gp = source.gamepad;
+        if (!gp) continue;
+
+        const pressed = gp.buttons?.some((b, idx) => idx >= 0 && b?.pressed);
+        const x = gp.axes && gp.axes.length >= 3 ? gp.axes[2] : (gp.axes?.[0] || 0);
+        if (pressed) {
+          if (gp.buttons[4]?.pressed || gp.buttons[5]?.pressed || gp.buttons[3]?.pressed) {
+            session.end().catch(()=>{});
+            state.controllerCooldown = now + 750;
+            return;
+          }
+          loadRandomPreset(getBlend());
+          state.controllerCooldown = now + 550;
+          return;
+        }
+        if (x > 0.72) {
+          loadPresetByIndex(state.presetIndex + 1, getBlend());
+          state.controllerCooldown = now + 450;
+          return;
+        }
+        if (x < -0.72) {
+          loadPresetByIndex(state.presetIndex - 1, getBlend());
+          state.controllerCooldown = now + 450;
+          return;
+        }
+      }
+    }
+
+    async function initApp() {
+      bind();
+      applyLook();
+      await ensureButterchurn();
+      await setAudioSource();
+      if (navigator.xr) {
+        state.vrSupported = await navigator.xr.isSessionSupported('immersive-vr').catch(() => false);
+        document.body.classList.toggle('no-webxr', !state.vrSupported);
+      } else {
+        document.body.classList.add('no-webxr');
+      }
+      status('Ready. Pick a station, press Play, or press Enter VR on Meta Quest Browser.\n' + diagnostic());
+    }
+
+    function bind() {
+      window.addEventListener('resize', () => {
+        resizeCanvas();
+        if (state.vr?.renderer) {
+          state.vr.renderer.setSize(innerWidth, innerHeight);
+          state.vr.camera.aspect = innerWidth / innerHeight;
+          state.vr.camera.updateProjectionMatrix();
+        }
+      });
+
+      ['input','change'].forEach(evt => {
+        els.brightSlider.addEventListener(evt, applyLook);
+        els.satSlider.addEventListener(evt, applyLook);
+        els.dimSlider.addEventListener(evt, applyLook);
+        els.intervalSlider.addEventListener(evt, () => { applyLook(); restartAutoIfNeeded(); });
+        els.blendSlider.addEventListener(evt, applyLook);
+        els.distanceSlider.addEventListener(evt, applyVrScreenSettings);
+        els.curveSlider.addEventListener(evt, applyVrScreenSettings);
+        els.screenSizeSlider.addEventListener(evt, applyVrScreenSettings);
+      });
+
+      els.sourceSelect.addEventListener('change', setAudioSource);
+      els.fileInput.addEventListener('change', () => {
+        if (state.localUrl) URL.revokeObjectURL(state.localUrl);
+        const file = els.fileInput.files && els.fileInput.files[0];
+        if (!file) return;
+        state.localUrl = URL.createObjectURL(file);
+        els.localAudio.src = state.localUrl;
+        els.localAudio.load();
+        status('Local file loaded. Press Play.\n' + diagnostic());
+      });
+
+      els.playBtn.addEventListener('click', async () => {
+        if (state.playing) pauseAll(); else await playSelected();
+      });
+      els.stopBtn.addEventListener('click', stopAll);
+      els.radioAudio.addEventListener('error', tryNextRadioUrl);
+
+      els.vibeSelect.addEventListener('change', async () => {
+        await ensureButterchurn();
+        applyVibeFilter(false);
+        loadRandomPreset(getBlend());
+      });
+      els.presetSelect.addEventListener('change', () => loadPresetByIndex(Number(els.presetSelect.value), getBlend()));
+      els.randomPresetBtn.addEventListener('click', async () => { await ensureButterchurn(); loadRandomPreset(getBlend()); });
+      els.nextPresetBtn.addEventListener('click', async () => { await ensureButterchurn(); loadPresetByIndex(state.presetIndex + 1, getBlend()); });
+      els.autoBtn.addEventListener('click', toggleAuto);
+
+      els.cleanBtn.addEventListener('click', () => setClean(!state.clean));
+      els.fullBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+        else document.exitFullscreen?.();
+      });
+      els.showAudioBtn.addEventListener('click', () => {
+        state.audioBarVisible = !state.audioBarVisible;
+        els.showAudioBtn.textContent = state.audioBarVisible ? 'Hide player' : 'Show player';
+        els.radioAudio.style.display = state.audioBarVisible && !['local','silent'].includes(state.source) ? 'block' : 'none';
+        els.localAudio.style.display = state.audioBarVisible && state.source === 'local' ? 'block' : 'none';
+      });
+
+      els.enterVrBtn.addEventListener('click', enterVr);
+      els.recenterBtn.addEventListener('click', recenterVrScreen);
+
+      ['pointerdown','mousemove','touchstart'].forEach(evt => {
+        window.addEventListener(evt, () => {
+          if (state.clean) showControlsTemporarily();
+        }, { passive: true });
+      });
+
+      window.addEventListener('keydown', async e => {
+        const tag = document.activeElement?.tagName?.toLowerCase();
+        if (['input','select','textarea'].includes(tag)) return;
+        const key = e.key.toLowerCase();
+        if (key === ' ') { e.preventDefault(); if (state.playing) pauseAll(); else await playSelected(); }
+        if (key === 'c' || key === 'h') setClean(!state.clean);
+        if (key === 'f') {
+          if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+          else document.exitFullscreen?.();
+        }
+        if (key === 'r') { await ensureButterchurn(); loadRandomPreset(getBlend()); }
+        if (key === 'n') { await ensureButterchurn(); loadPresetByIndex(state.presetIndex + 1, getBlend()); }
+        if (key === 'a') toggleAuto();
+        if (key === 'v') enterVr();
+        if (key === 'escape' && state.xrSession) state.xrSession.end().catch(()=>{});
+      });
+    }
+
+    initApp();
+  </script>
+</body>
+</html>
